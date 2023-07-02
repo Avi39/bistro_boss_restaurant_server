@@ -56,18 +56,29 @@ async function run() {
       res.send({token})
     })
 
+    // warning: use verifyJWT before using verifyAdmin
+    const verifyAdmin = async(req,res,next) =>{
+      const email = req.decoded.email;
+      const query = {email:email}
+      const user = await userCollection.findOne(query);
+      if(user?.role !== 'admin'){
+        return res.status(403).send({error: true,message:'forbidden message'});
+      }
+      next();
+    }
+
     //users related api
-    app.get('/users',async(req,res)=>{
+    app.get('/users',verifyJWT, verifyAdmin, async(req,res)=>{
       const result = await userCollection.find().toArray();
       res.send(result);
     })
 
     app.post('/users',async(req,res)=>{
       const user = req.body;
-      console.log(user);
+      // console.log(user);
       const query = {email: user.email}
       const existingUser = await userCollection.findOne(query);
-      console.log('existing user',existingUser);
+      // console.log('existing user',existingUser);
       if(existingUser){
         return res.send({message:'user already exists '})
       }
@@ -78,7 +89,7 @@ async function run() {
     // security layer: verifyJWT
     // email same
     // check admin
-    app.get('/user/admin/:email',verifyJWT, async (req,res) =>{
+    app.get('/users/admin/:email',verifyJWT, async (req,res) =>{
       const email = req.params.email;
       if(req.decoded.email !== email){
         res.send({admin: false})
@@ -107,6 +118,21 @@ async function run() {
       res.send(result);
     })
 
+    app.post('/menu',verifyJWT,verifyAdmin,async(req,res)=>{
+      const newItem = req.body;
+      console.log(newItem);
+      const result = await menuCollection.insertOne(newItem);
+      res.send(result);
+    })
+
+    app.delete('/menu/:id',verifyJWT,verifyAdmin,async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      console.log(query);
+      const result = await menuCollection.deleteOne(query);
+      res.send(result);
+    })
+
     // review related api
     app.get('/reviews', async (req, res) => {
       const result = await reviewCollection.find().toArray();
@@ -132,7 +158,7 @@ async function run() {
     })
     app.post('/carts',async(req,res)=>{
       const item = req.body;
-      console.log(item);
+      // console.log(item);
       const result = await cartCollection.insertOne(item);
       res.send(result);
     })
